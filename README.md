@@ -25,7 +25,7 @@ This is school project
 
 ```
 
-## 🛠 Technologies I'm Learning
+## 🛠 Technologies
 ```
 Language using: Python
 📫 Connect With Us
