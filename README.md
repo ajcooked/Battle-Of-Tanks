@@ -28,25 +28,31 @@ This is school project
 📫 Connect With Us
 facebook:
 ```
+
+```
 DEV1
 https://www.facebook.com/ajsxncooked
 ```
+
 ```
 DEV2
 https://www.facebook.com/seyyyy.287
-
 ```
+
 ```
 DEV3
 https://www.facebook.com/ravenjames.paitan.5
 ```
+
 ```
 DEV4
 https://www.facebook.com/ramos.shian
 ```
+
 ```
 DEV5
 https://www.facebook.com/ronie.artillo.5
+```
 ```
 📌 Portfolio: Coming Soon
 📧 Email: ajdalagon123@gmail.com
