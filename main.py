@@ -1,4 +1,5 @@
 import pygame
+import sys
 import os
 pygame.mixer.init()
 pygame.font.init()
@@ -10,7 +11,14 @@ VEL = 1 # VELOCITY/SPEED OF TANK
 WIDTH, HEIGHT = 1000, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+GREEN = (40, 255, 40)
+RED = (255, 40, 40)
+BLACK = (20, 20, 25)
+GRAY = (100, 105, 110)
+METAL = (50, 55, 60)
+GOLD = (255, 215, 0)
+DEEP_BLUE = (20, 25, 30)
+CRATE_COLOR = (139, 69, 19)
 USER1_WIDTH, USER1_HEIGHT = 60, 70
 BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 HP_FONT = pygame.font.SysFont('comicsans', 40)
