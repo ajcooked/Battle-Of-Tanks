@@ -1,3 +1,10 @@
+# Project Started: December 19, 2025
+## AUTHORS----------------------------------------------------
+# Back-end: DALAGON, TOLEDO ---- GAME LOGIC AND FUNCTIONALITY
+# Front-end: PAITAN, RAMOS ---- UI/UX
+# Assets/Graphics: ARTILLO
+#---------------------------------------------------------------
+
 import pygame
 import sys
 import os
