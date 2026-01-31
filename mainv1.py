@@ -52,6 +52,7 @@ BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'PLAYERS', 'BOT.png'))
 
 # Fonts
 ftitle = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 80)
+bfont = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 30)
 font_main_title = pygame.font.SysFont("Impact", 80)
 font_hud =pygame.font.SysFont("Impact", 28)
 font_victory = pygame.font.SysFont("Impact", 70)
@@ -77,6 +78,41 @@ def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
 def draw_hud(P1 , P2, bot):
     pygame.draw.rect(WIN, BLACK, (0, 0, WIDTH, 80))
     title = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
+
+class Button:
+    def __init__(self, text, x_pos, y_pos, enabled):
+        self.text = text
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.enabled = enabled
+        self.draw()
+        
+    def draw(self):
+        button_text = bfont.render(self.text, True, 'black')
+        button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (200, 100))
+        if self.enabled:
+            if self.check_click():
+                pygame.draw.rect(WIN, DEEP_BLUE, button_rect, 0, 20)
+            else:
+                pygame.draw.rect(WIN, CB, button_rect, 0, 20)
+        else:
+            pygame.draw.rect(WIN, METAL, button_rect, 3, 22)
+        text_rect = button_text.get_rect(center=button_rect.center)
+        WIN.blit(button_text, text_rect)
+
+    def check_click(self):
+        mouse_pos = pygame.mouse.get_pos()
+        left_click = pygame.mouse.get_pressed()[0]
+        button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (200, 100))
+        if left_click and button_rect.collidepoint(mouse_pos) and self.enabled:
+            print("Clicked")
+            return True
+        else:
+            print('Clicked')
+            return False
+
+
+
 
 
 def Menu():
@@ -108,6 +144,11 @@ def Menu():
         
         P1 = pygame.transform.scale(PLAYER1_TANK_IMAGE, (250, 250))
         P2 =pygame.transform.scale(PLAYER2_TANK_IMAGE, (250, 250))
+
+
+
+        play_button = Button('PLAY', 500, 300, True)
+        quit_button = Button('QUIT', 500, 450, True)
 
         WIN.blit(P1, (925, 400 + bounce_offset))
         WIN.blit(P2, (25, 400 - bounce_offset))

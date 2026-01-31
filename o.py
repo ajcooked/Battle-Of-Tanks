@@ -6,7 +6,7 @@ pygame.init()
 SCREEN = pygame.display.set_mode((1200, 720))
 pygame.display.set_caption("BATTLE OF TANKS")
 
-BG = pygame.image.load("assets/bg.jpg")
+BG = pygame.image.load("assets/bg.png")
 BG = pygame.transform.scale(BG, (1280, 700))
 
 # Grid parameters
