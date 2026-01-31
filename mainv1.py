@@ -85,32 +85,91 @@ class Button:
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.enabled = enabled
-        self.draw()
+        self.button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (500, 100))
         
     def draw(self):
         button_text = bfont.render(self.text, True, 'black')
-        button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (200, 100))
         if self.enabled:
-            if self.check_click():
-                pygame.draw.rect(WIN, DEEP_BLUE, button_rect, 0, 20)
+            if self.is_hovered():
+                pygame.draw.rect(WIN, DEEP_BLUE, self.button_rect, 0, 20)
             else:
-                pygame.draw.rect(WIN, CB, button_rect, 0, 20)
+                pygame.draw.rect(WIN, CB, self.button_rect, 0, 20)
         else:
-            pygame.draw.rect(WIN, METAL, button_rect, 3, 22)
-        text_rect = button_text.get_rect(center=button_rect.center)
+            pygame.draw.rect(WIN, METAL, self.button_rect, 3, 20)
+        text_rect = button_text.get_rect(center=self.button_rect.center)
         WIN.blit(button_text, text_rect)
 
-    def check_click(self):
+    def is_hovered(self):
         mouse_pos = pygame.mouse.get_pos()
-        left_click = pygame.mouse.get_pressed()[0]
-        button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (200, 100))
-        if left_click and button_rect.collidepoint(mouse_pos) and self.enabled:
-            print("Clicked")
-            return True
-        else:
-            print('Clicked')
-            return False
+        return self.button_rect.collidepoint(mouse_pos)
 
+    def check_click(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.button_rect.collidepoint(event.pos) and self.enabled:
+                return True
+        return False
+    
+def VSPLAYER():
+    pass
+
+
+def VSBOT():
+    pass
+
+def Mode_Select_WIN():
+    global grid_offset_x, grid_offset_y, bounce_time
+
+    clock = pygame.time.Clock()
+    run = True
+    while run:
+        grid_offset_x = (grid_offset_x + GRID_SPEED * 1) % GRID_SIZE
+        grid_offset_y = (grid_offset_y + GRID_SPEED * 1) % GRID_SIZE
+
+        WIN.fill((DEEP_BLUE))
+        draw_moving_grid(WIN, grid_offset_x, grid_offset_y)
+        bg_with_alpha = BG.copy()
+        bg_with_alpha.set_alpha(150)
+        WIN.blit(bg_with_alpha, (0, 0))
+        bounce_time += 1
+        bounce_offset = math.sin(bounce_time * 0.05 * bounce_speed) * bounce_amplitude
+
+        # Title!!
+        T1 = ftitle.render("SELECT MODE", True, GRAY)
+        T1_RECT = T1.get_rect(center=(600, 100))
+        T2 = ftitle.render("SELECT MODE", True, WHITE2)
+        T2_RECT = T2.get_rect(center=(600, 104 + bounce_offset * 0.3))
+
+        Player_button = Button('PLAYER VS PLAYER', 350, 250, True)
+        Bot_button = Button('PLAYER VS BOT', 350, 400, True)
+        Back_button = Button('BACK', 350, 550, True)
+
+        WIN.blit(T1, T1_RECT)
+        WIN.blit(T2, T2_RECT)
+
+        Player_button.draw()
+        Bot_button.draw()
+        Back_button.draw()
+
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                sys.exit()
+
+            if Player_button.check_click(event):
+                run = False
+                VSPLAYER()
+
+            if Bot_button.check_click(event):
+                run = False
+                VSBOT()
+
+            if Back_button.check_click(event):
+                run = False
+                Menu()
+
+        pygame.display.update()
 
 
 
@@ -147,8 +206,10 @@ def Menu():
 
 
 
-        play_button = Button('PLAY', 500, 300, True)
-        quit_button = Button('QUIT', 500, 450, True)
+        play_button = Button('PLAY', 350, 300, True)
+        quit_button = Button('QUIT', 350, 450, True)
+        play_button.draw()
+        quit_button.draw()
 
         WIN.blit(P1, (925, 400 + bounce_offset))
         WIN.blit(P2, (25, 400 - bounce_offset))
@@ -160,6 +221,16 @@ def Menu():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
+                sys.exit()
+
+            if play_button.check_click(event):
+                run = False
+                Mode_Select_WIN()
+
+            if quit_button.check_click(event):
+                run = False
+                pygame.quit()
+                sys.exit()
         
 
         pygame.display.update()
