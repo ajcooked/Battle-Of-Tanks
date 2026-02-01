@@ -39,7 +39,6 @@ CRATE_COLOR = (139, 69, 19)
 # Variables
 
 FPS = 60
-VEL = 1
 WIDTH, HEIGHT = 1200, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 P_WIDTH, P_HEIGHT = 60, 70
@@ -79,12 +78,16 @@ def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
                         (0, y + offset_y),
                         (1200, y + offset_y), 1)
 
+def draw_battlefield(surface):
+    surface.fill((45, 48, 50))
 
+    for x in range(0, WIDTH, 50):
+        pygame.draw.line(surface, (55, 58, 60), (x, 80), (x, HEIGHT))
 
+    for y in range(80, HEIGHT, 50):
+        pygame.draw.line(surface, (55, 215, 60), (0, y), (WIDTH, y))
+    pygame.draw.rect(surface, (255, 215, 0), (WIDTH//2 - 1, 75, 2, HEIGHT))
 
-def draw_hud(P1 , P2, bot):
-    pygame.draw.rect(WIN, BLACK, (0, 0, WIDTH, 80))
-    title = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
 
 class Button:
     def __init__(self, text, x_pos, y_pos, enabled):
@@ -115,9 +118,119 @@ class Button:
             if self.button_rect.collidepoint(event.pos) and self.enabled:
                 return True
         return False
+
+class Tank:
+    def __init__(self, x, y, image, player_type):
+        self.original_image = pygame.transform.scale(image, (P_WIDTH, P_HEIGHT))
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.x = x
+        self.y = y
+        self.rect.x = x
+        self.rect.y = y
+        self.width = P_WIDTH
+        self.height = P_HEIGHT
+        self.vel = 2
+        self.angle = 0
+        self.health = 100
+        self.player_type = player_type
+
+    def move(self, keys_pressed):
+        if self.player_type == "P1":
+            if keys_pressed[pygame.K_a] and self.x - self.vel > 0:
+                self.x -= self.vel
+                self.angle = 90
+            if keys_pressed[pygame.K_d] and self.x + self.vel + self.width< WIDTH:
+                self.x += self.vel
+                self.angle = 270
+            if keys_pressed[pygame.K_w] and self.y - self.vel > 80:
+                self.y -= self.vel
+                self.angle = 0
+            if keys_pressed[pygame.K_s] and self.y + self.vel + self.height < HEIGHT:
+                self.y += self.vel
+                self.angle = 180
+
+        elif self.player_type == "P2":
+                if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
+                    self.x -= self.vel
+                    self.angle = 90
+                if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width< WIDTH:
+                    self.x += self.vel
+                    self.angle = 270
+                if keys_pressed[pygame.K_UP] and self.y - self.vel > 80:
+                    self.y -= self.vel
+                    self.angle = 0
+                if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
+                    self.y += self.vel
+                    self.angle = 180
+
+        # UPDATING RECT POS
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+
+    def draw(self, surface):
+        # ROTATION LOGIC!
+        rotated_image = pygame.transform.rotate(self.original_image, self.angle)
+        rotated_rect = rotated_image.get_rect(center=(self.x + self.width//2, self.y + self.height//2))
+        surface.blit(rotated_image, rotated_rect)
+
+        # Helth Bar!
+        health_bar_width = 60
+        health_bar_height = 8
+        health_ratio = self.health / 100
+        pygame.draw.rect(surface, RED,
+                        (self.x, self.y - 15, health_bar_width, health_bar_height))
+        pygame.draw.rect(surface, GREEN,
+                        (self.x, self.y - 15, health_bar_width * health_ratio, health_bar_height))
+        
     
+
+
+
+
+
 def VSPLAYER():
-    pass
+    global grid_offset_x, grid_offset_y
+
+    clock = pygame.time.Clock()
+
+    player1 = Tank(100, 350, PLAYER1_TANK_IMAGE, "P1")
+    player2 = Tank(1000, 350, PLAYER2_TANK_IMAGE, "P2")
+
+    run = True
+    while run:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        run = False
+                        Menu()
+
+        keys_pressed = pygame.key.get_pressed()
+
+        # Tanks Movement!
+        player1.move(keys_pressed)
+        player2.move(keys_pressed)
+
+        draw_battlefield(WIN)
+
+        pygame.draw.rect(WIN, BLACK, (90, 0, WIDTH, 80))
+        pygame.draw.rect(WIN, METAL, (0, 0, WIDTH, 75))
+        pygame.draw.line(WIN, GOLD, (0, 75), (WIDTH, 75), 3)
+
+        tittle = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
+        WIN.blit(tittle, (WIDTH//2 - tittle.get_width()//2, 20))
+
+        player1.draw(WIN)
+        player2.draw(WIN)
+
+        pygame.display.update()
+
 
 
 def VSBOT():
