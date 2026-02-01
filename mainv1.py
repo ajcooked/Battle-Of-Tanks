@@ -9,6 +9,7 @@ import pygame
 import sys
 import os
 import math
+import random
 pygame.mixer.init()
 pygame.font.init()
 pygame.display.set_caption("BOT")
@@ -41,19 +42,23 @@ CRATE_COLOR = (139, 69, 19)
 FPS = 60
 WIDTH, HEIGHT = 1200, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-P_WIDTH, P_HEIGHT = 60, 70
+P_WIDTH, P_HEIGHT = 130, 130
 BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 
 
 # Image Import/Adjustment
 BG = pygame.image.load(os.path.join('Assets', 'bg.png'))
 BG = pygame.transform.scale(BG, (WIDTH, HEIGHT))
-PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'PLAYERS', 'P1.png'))
+PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P1.png'))
 PLAYER1_TANK = pygame.transform.rotate(pygame.transform.scale(PLAYER1_TANK_IMAGE, (P_WIDTH, P_WIDTH)), 0)
-PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'PLAYERS', 'P2.png'))
+PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P2.png'))
 PLAYER2_TANK =pygame.transform.rotate(pygame.transform.scale(PLAYER2_TANK_IMAGE, (P_WIDTH, P_HEIGHT)), 0)
-BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'PLAYERS', 'BOT.png'))
-
+BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'BOT.png'))
+ROCK_IMG = pygame.image.load(os.path.join('Assets', 'Img', 'rock1.png'))
+ROCK2_IMG = pygame.image.load(os.path.join('Assets', 'Img', 'rock2.png'))
+rock_siz = 50
+ROCK_IMG = pygame.transform.scale(ROCK_IMG, (rock_siz, rock_siz))
+ROCK2_IMG = pygame.transform.scale(ROCK2_IMG, (rock_siz, rock_siz))
 
 
 # Fonts
@@ -119,6 +124,18 @@ class Button:
                 return True
         return False
 
+class obstacle:
+    def __init__(self, x, y):
+        self.img = ROCK_IMG
+        self.img2 = ROCK2_IMG
+        self.rect1 = self.img.get_rect(topleft=(x, y))
+        self.rect2 = self.img2.get_rect(topleft=(x + 60, y + 20))
+        self.x = x
+        self.y = y
+        
+    def draw(self, surface):
+        surface.blit(self.img, self.rect1)
+        surface.blit(self.img2, self.rect2)
 class Tank:
     def __init__(self, x, y, image, player_type):
         self.original_image = pygame.transform.scale(image, (P_WIDTH, P_HEIGHT))
@@ -135,34 +152,37 @@ class Tank:
         self.health = 100
         self.player_type = player_type
 
-    def move(self, keys_pressed):
+    def move(self, keys_pressed, obstacles=[]):
+        old_x = self.x
+        old_y = self.y
+
         if self.player_type == "P1":
             if keys_pressed[pygame.K_a] and self.x - self.vel > 0:
                 self.x -= self.vel
-                self.angle = 90
+                self.angle = 180
             if keys_pressed[pygame.K_d] and self.x + self.vel + self.width< WIDTH:
                 self.x += self.vel
-                self.angle = 270
+                self.angle = 0
             if keys_pressed[pygame.K_w] and self.y - self.vel > 80:
                 self.y -= self.vel
-                self.angle = 0
+                self.angle = 90
             if keys_pressed[pygame.K_s] and self.y + self.vel + self.height < HEIGHT:
                 self.y += self.vel
-                self.angle = 180
+                self.angle = 270
 
         elif self.player_type == "P2":
                 if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
                     self.x -= self.vel
-                    self.angle = 90
+                    self.angle = 180
                 if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width< WIDTH:
                     self.x += self.vel
-                    self.angle = 270
+                    self.angle = 0
                 if keys_pressed[pygame.K_UP] and self.y - self.vel > 80:
                     self.y -= self.vel
-                    self.angle = 0
+                    self.angle = 90
                 if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
                     self.y += self.vel
-                    self.angle = 180
+                    self.angle = 270
 
         # UPDATING RECT POS
         self.rect.x = self.x
@@ -176,15 +196,25 @@ class Tank:
         surface.blit(rotated_image, rotated_rect)
 
         # Helth Bar!
-        health_bar_width = 60
-        health_bar_height = 8
+        health_bar_width = 100
+        health_bar_height = 12
         health_ratio = self.health / 100
+        health_bar_x = self.x + (self.width // 2) - (health_bar_width // 2)  # ← CENTERED!
+        health_bar_y = self.y - 15
         pygame.draw.rect(surface, RED,
-                        (self.x, self.y - 15, health_bar_width, health_bar_height))
+                        (health_bar_x, health_bar_y, health_bar_width, health_bar_height), border_radius=4)
         pygame.draw.rect(surface, GREEN,
-                        (self.x, self.y - 15, health_bar_width * health_ratio, health_bar_height))
+                        (health_bar_x, health_bar_y, health_bar_width * health_ratio, health_bar_height), border_radius=4)
         
-    
+        for obstacle in obstacles:
+            if self.rect.colliderect(obstacle.rect1) or self.rect.colliderect(obstacle.rect2):
+                # HIT ROCK! Go back to old position
+                self.x = old_x
+                self.y = old_y
+                self.rect.x = self.x
+            self.rect.y = self.y
+            break  # Stop checking
+
 
 
 

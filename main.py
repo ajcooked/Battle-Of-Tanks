@@ -34,9 +34,9 @@ pygame.display.set_caption("Battle Of Tanks")
 
 # Image Import/Adjustment
 
-USER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'tank.png'))
+USER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P1.png'))
 USER1_TANK = pygame.transform.rotate(pygame.transform.scale(USER1_TANK_IMAGE, (USER1_WIDTH, USER1_HEIGHT)), 0)
-USER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'tank_enemy.png'))
+USER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P2.png'))
 USER2_TANK = pygame.transform.rotate(pygame.transform.scale(USER2_TANK_IMAGE, (USER1_WIDTH, USER1_HEIGHT)), 0)
 
 def drawing_window(USER1, USER2, user1_bullets, user2_bullets, user1_hp, user2_hp):
@@ -161,6 +161,7 @@ def main():
 
                 
     main()
+    pygame.display.update()
 
 if __name__ == "__main__":
     main()
