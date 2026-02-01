@@ -9,10 +9,10 @@ import pygame
 import sys
 import os
 import math
-import random
+
 pygame.mixer.init()
 pygame.font.init()
-pygame.display.set_caption("BOT")
+pygame.display.set_caption("Battle of Tanks")
 
 # UI
 bounce_time = 0
@@ -38,11 +38,10 @@ CRATE_COLOR = (139, 69, 19)
 
 
 # Variables
-
 FPS = 60
 WIDTH, HEIGHT = 1200, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-P_WIDTH, P_HEIGHT = 130, 130
+P_WIDTH, P_HEIGHT = 80, 80  # Tank size
 BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 
 
@@ -50,47 +49,34 @@ BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 BG = pygame.image.load(os.path.join('Assets', 'bg.png'))
 BG = pygame.transform.scale(BG, (WIDTH, HEIGHT))
 PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P1.png'))
-PLAYER1_TANK = pygame.transform.rotate(pygame.transform.scale(PLAYER1_TANK_IMAGE, (P_WIDTH, P_WIDTH)), 0)
 PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P2.png'))
-PLAYER2_TANK =pygame.transform.rotate(pygame.transform.scale(PLAYER2_TANK_IMAGE, (P_WIDTH, P_HEIGHT)), 0)
 BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'BOT.png'))
-ROCK_IMG = pygame.image.load(os.path.join('Assets', 'Img', 'rock1.png'))
-ROCK2_IMG = pygame.image.load(os.path.join('Assets', 'Img', 'rock2.png'))
-rock_siz = 50
-ROCK_IMG = pygame.transform.scale(ROCK_IMG, (rock_siz, rock_siz))
-ROCK2_IMG = pygame.transform.scale(ROCK2_IMG, (rock_siz, rock_siz))
 
 
 # Fonts
 ftitle = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 80)
 bfont = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 30)
 font_main_title = pygame.font.SysFont("Impact", 80)
-font_hud =pygame.font.SysFont("Impact", 28)
+font_hud = pygame.font.SysFont("Impact", 28)
 font_victory = pygame.font.SysFont("Impact", 70)
 
 
-
 def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
-    # Draws a vertical lines!
+    # Draws vertical lines
     for x in range(-grid_size, WIDTH + grid_size, grid_size):
-        pygame.draw.line(surface, CB,
-                        (x + offset_x, 0),
-                        (x + offset_x, 700), 1)
-        
-    # Draws horizontal lines!
+        pygame.draw.line(surface, CB, (x + offset_x, 0), (x + offset_x, 700), 1)
+    # Draws horizontal lines
     for y in range(-grid_size, 700 + grid_size, grid_size):
-        pygame.draw.line(surface, CB,
-                        (0, y + offset_y),
-                        (1200, y + offset_y), 1)
+        pygame.draw.line(surface, CB, (0, y + offset_y), (1200, y + offset_y), 1)
+
 
 def draw_battlefield(surface):
+    """Draw battlefield background"""
     surface.fill((45, 48, 50))
-
     for x in range(0, WIDTH, 50):
         pygame.draw.line(surface, (55, 58, 60), (x, 80), (x, HEIGHT))
-
     for y in range(80, HEIGHT, 50):
-        pygame.draw.line(surface, (55, 215, 60), (0, y), (WIDTH, y))
+        pygame.draw.line(surface, (55, 58, 60), (0, y), (WIDTH, y))
     pygame.draw.rect(surface, (255, 215, 0), (WIDTH//2 - 1, 75, 2, HEIGHT))
 
 
@@ -124,18 +110,8 @@ class Button:
                 return True
         return False
 
-class obstacle:
-    def __init__(self, x, y):
-        self.img = ROCK_IMG
-        self.img2 = ROCK2_IMG
-        self.rect1 = self.img.get_rect(topleft=(x, y))
-        self.rect2 = self.img2.get_rect(topleft=(x + 60, y + 20))
-        self.x = x
-        self.y = y
-        
-    def draw(self, surface):
-        surface.blit(self.img, self.rect1)
-        surface.blit(self.img2, self.rect2)
+
+
 class Tank:
     def __init__(self, x, y, image, player_type):
         self.original_image = pygame.transform.scale(image, (P_WIDTH, P_HEIGHT))
@@ -147,124 +123,121 @@ class Tank:
         self.rect.y = y
         self.width = P_WIDTH
         self.height = P_HEIGHT
-        self.vel = 2
+        self.vel = 3 
         self.angle = 0
         self.health = 100
         self.player_type = player_type
 
-    def move(self, keys_pressed, obstacles=[]):
-        old_x = self.x
-        old_y = self.y
+    def move(self, keys_pressed):
 
+
+        # Player 1 controls - WASD
         if self.player_type == "P1":
             if keys_pressed[pygame.K_a] and self.x - self.vel > 0:
                 self.x -= self.vel
-                self.angle = 180
-            if keys_pressed[pygame.K_d] and self.x + self.vel + self.width< WIDTH:
+                self.angle = 180  # Face LEFT
+            if keys_pressed[pygame.K_d] and self.x + self.vel + self.width < WIDTH:
                 self.x += self.vel
-                self.angle = 0
+                self.angle = 0  # Face RIGHT
             if keys_pressed[pygame.K_w] and self.y - self.vel > 80:
                 self.y -= self.vel
-                self.angle = 90
+                self.angle = 90  # Face UP
             if keys_pressed[pygame.K_s] and self.y + self.vel + self.height < HEIGHT:
                 self.y += self.vel
-                self.angle = 270
+                self.angle = 270  # Face DOWN
 
+        # Player 2 controls - Arrow Keys
         elif self.player_type == "P2":
-                if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
-                    self.x -= self.vel
-                    self.angle = 180
-                if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width< WIDTH:
-                    self.x += self.vel
-                    self.angle = 0
-                if keys_pressed[pygame.K_UP] and self.y - self.vel > 80:
-                    self.y -= self.vel
-                    self.angle = 90
-                if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
-                    self.y += self.vel
-                    self.angle = 270
+            if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
+                self.x -= self.vel
+                self.angle = 180
+            if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width < WIDTH:
+                self.x += self.vel
+                self.angle = 270
+            if keys_pressed[pygame.K_UP] and self.y - self.vel > 80:
+                self.y -= self.vel
+                self.angle = 0
+            if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
+                self.y += self.vel
+                self.angle = 180
 
-        # UPDATING RECT POS
+        # Update rect position
         self.rect.x = self.x
         self.rect.y = self.y
 
 
     def draw(self, surface):
-        # ROTATION LOGIC!
         rotated_image = pygame.transform.rotate(self.original_image, self.angle)
         rotated_rect = rotated_image.get_rect(center=(self.x + self.width//2, self.y + self.height//2))
         surface.blit(rotated_image, rotated_rect)
 
-        # Helth Bar!
-        health_bar_width = 100
-        health_bar_height = 12
+        health_bar_width = 80
+        health_bar_height = 10
         health_ratio = self.health / 100
-        health_bar_x = self.x + (self.width // 2) - (health_bar_width // 2)  # ← CENTERED!
+        health_bar_x = self.x + (self.width // 2) - (health_bar_width // 2)
         health_bar_y = self.y - 15
+
+
         pygame.draw.rect(surface, RED,
-                        (health_bar_x, health_bar_y, health_bar_width, health_bar_height), border_radius=4)
+                        (health_bar_x, health_bar_y, health_bar_width, health_bar_height),
+                            border_radius=5)
+
         pygame.draw.rect(surface, GREEN,
-                        (health_bar_x, health_bar_y, health_bar_width * health_ratio, health_bar_height), border_radius=4)
-        
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle.rect1) or self.rect.colliderect(obstacle.rect2):
-                # HIT ROCK! Go back to old position
-                self.x = old_x
-                self.y = old_y
-                self.rect.x = self.x
-            self.rect.y = self.y
-            break  # Stop checking
-
-
+                        (health_bar_x, health_bar_y, health_bar_width * health_ratio, health_bar_height),
+                            border_radius=5)
 
 
 
 
 def VSPLAYER():
-    global grid_offset_x, grid_offset_y
 
     clock = pygame.time.Clock()
 
+    # Create tanks
     player1 = Tank(100, 350, PLAYER1_TANK_IMAGE, "P1")
     player2 = Tank(1000, 350, PLAYER2_TANK_IMAGE, "P2")
 
     run = True
     while run:
         clock.tick(FPS)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
                 sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        run = False
-                        Menu()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    run = False
+                    Menu()
 
         keys_pressed = pygame.key.get_pressed()
 
-        # Tanks Movement!
+
         player1.move(keys_pressed)
         player2.move(keys_pressed)
 
+        # Draw background
         draw_battlefield(WIN)
 
-        pygame.draw.rect(WIN, BLACK, (90, 0, WIDTH, 80))
+        # Draw HUD
+        pygame.draw.rect(WIN, BLACK, (0, 0, WIDTH, 80))
         pygame.draw.rect(WIN, METAL, (0, 0, WIDTH, 75))
         pygame.draw.line(WIN, GOLD, (0, 75), (WIDTH, 75), 3)
 
-        tittle = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
-        WIN.blit(tittle, (WIDTH//2 - tittle.get_width()//2, 20))
+        title = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
+        WIN.blit(title, (WIDTH//2 - title.get_width()//2, 20))
 
+        # Draw tanks
         player1.draw(WIN)
         player2.draw(WIN)
 
         pygame.display.update()
 
 
-
 def VSBOT():
     pass
+
 
 def Mode_Select_WIN():
     global grid_offset_x, grid_offset_y, bounce_time
@@ -283,7 +256,7 @@ def Mode_Select_WIN():
         bounce_time += 1
         bounce_offset = math.sin(bounce_time * 0.05 * bounce_speed) * bounce_amplitude
 
-        # Title!!
+        # Title
         T1 = ftitle.render("SELECT MODE", True, GRAY)
         T1_RECT = T1.get_rect(center=(600, 100))
         T2 = ftitle.render("SELECT MODE", True, WHITE2)
@@ -322,16 +295,12 @@ def Mode_Select_WIN():
         pygame.display.update()
 
 
-
-
 def Menu():
-
     global grid_offset_x, grid_offset_y, grid_time, bounce_time
 
     clock = pygame.time.Clock()
     run = True
     while run:
-
         grid_offset_x = (grid_offset_x + GRID_SPEED * 1) % GRID_SIZE
         grid_offset_y = (grid_offset_y + GRID_SPEED * 1) % GRID_SIZE
 
@@ -343,8 +312,6 @@ def Menu():
         WIN.blit(bg_with_alpha, (0, 0))
         bounce_time += 1
         bounce_offset = math.sin(bounce_time * 0.05 * bounce_speed) * bounce_amplitude
-        
-        MENU_MOUSE_POS = pygame.mouse.get_pos()
 
         T1 = ftitle.render("BATTLE OF TANKS", True, GRAY)
         T1_RECT = T1.get_rect(center=(600, 100))
@@ -352,9 +319,9 @@ def Menu():
         T2_RECT = T2.get_rect(center=(600, 104 + bounce_offset * 0.3))
         
         P1 = pygame.transform.scale(PLAYER1_TANK_IMAGE, (250, 250))
-        P2 =pygame.transform.scale(PLAYER2_TANK_IMAGE, (250, 250))
-
-
+        P1 = pygame.transform.rotate(P1, 90)
+        P2 = pygame.transform.scale(PLAYER2_TANK_IMAGE, (250, 250))
+        P2 = pygame.transform.rotate(P2, -90)
 
         play_button = Button('PLAY', 350, 300, True)
         quit_button = Button('QUIT', 350, 450, True)
@@ -381,8 +348,9 @@ def Menu():
                 run = False
                 pygame.quit()
                 sys.exit()
-        
 
         pygame.display.update()
+
+
 if __name__ == "__main__":
     Menu()
