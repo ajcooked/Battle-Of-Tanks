@@ -48,9 +48,11 @@ BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
 # Image Import/Adjustment
 BG = pygame.image.load(os.path.join('Assets', 'bg.png'))
 BG = pygame.transform.scale(BG, (WIDTH, HEIGHT))
-PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P1.png'))
-PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'P2.png'))
-BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Img', 'BOT.png'))
+PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P1.png'))
+PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P2.png'))
+BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'BOT.png'))
+bullets_sprite = pygame.image.load(os.path.join('Assets', 'Sprites', 'Bullets.png')).convert_alpha()
+tank_explode = pygame.image.load(os.path.join('Assets', 'Sprites', 'explosion.png')).convert_alpha()
 
 
 # Fonts
@@ -71,7 +73,6 @@ def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
 
 
 def draw_battlefield(surface):
-    """Draw battlefield background"""
     surface.fill((45, 48, 50))
     for x in range(0, WIDTH, 50):
         pygame.draw.line(surface, (55, 58, 60), (x, 80), (x, HEIGHT))
@@ -110,6 +111,8 @@ class Button:
                 return True
         return False
 
+class Bullet:
+    pass
 
 
 class Tank:
@@ -150,16 +153,16 @@ class Tank:
         elif self.player_type == "P2":
             if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
                 self.x -= self.vel
-                self.angle = 180
+                self.angle = 0
             if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width < WIDTH:
                 self.x += self.vel
-                self.angle = 270
+                self.angle = 180
             if keys_pressed[pygame.K_UP] and self.y - self.vel > 80:
                 self.y -= self.vel
-                self.angle = 0
+                self.angle = 270
             if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
                 self.y += self.vel
-                self.angle = 180
+                self.angle = 90
 
         # Update rect position
         self.rect.x = self.x
