@@ -43,24 +43,24 @@ WIDTH, HEIGHT = 1200, 700
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 P_WIDTH, P_HEIGHT = 80, 80  # Tank size
 BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
+bullet_speed = 5
 
 
 # Image Import/Adjustment
-BG = pygame.image.load(os.path.join('Assets', 'bg.png'))
+BG = pygame.image.load(os.path.join('Assets', 'bg.png')).convert()
 BG = pygame.transform.scale(BG, (WIDTH, HEIGHT))
-PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P1.png'))
-PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P2.png'))
-BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'BOT.png'))
+PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P1.png')).convert_alpha()
+PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P2.png')).convert_alpha()
+BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'BOT.png')).convert_alpha()
 bullets_sprite = pygame.image.load(os.path.join('Assets', 'Sprites', 'Bullets.png')).convert_alpha()
 tank_explode = pygame.image.load(os.path.join('Assets', 'Sprites', 'explosion.png')).convert_alpha()
+explosion_sheet_1 = tank_explode
+explosion_sheet_2 = tank_explode
 
 
 # Fonts
 ftitle = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 80)
 bfont = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 30)
-font_main_title = pygame.font.SysFont("Impact", 80)
-font_hud = pygame.font.SysFont("Impact", 28)
-font_victory = pygame.font.SysFont("Impact", 70)
 
 
 def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
@@ -80,6 +80,38 @@ def draw_battlefield(surface):
         pygame.draw.line(surface, (55, 58, 60), (0, y), (WIDTH, y))
     pygame.draw.rect(surface, (255, 215, 0), (WIDTH//2 - 1, 75, 2, HEIGHT))
 
+def get_explode_frames(sheet, num_frames=10, frame_w=64, frame_h=64):
+    frames = []
+    for i in range(num_frames):
+        frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+        frame.blit(sheet, (0, 0), (i * frame_w, frame_h))
+        frames.append(frame.convert_alpha())
+    return frames
+
+
+def get_bullet(sheet, row, col, w=16, h=16):
+    bullet = pygame.Surface((w, h), pygame.SRCALPHA)
+    bullet.blit(sheet, (0, 0), (col * w, row * h, w, h))
+    return bullet.convert_alpha()
+
+# Frames for explosion animation/bullet sprites
+explosion_small_f = get_explode_frames(explosion_sheet_1, 10, 64, 64)
+explosion_big_f = get_explode_frames(explosion_sheet_2, 10, 64, 64)
+p1bullet = [
+    get_bullet(bullets_sprite, 0, 0, 16, 16),
+    get_bullet(bullets_sprite, 0, 1, 16, 16),
+    get_bullet(bullets_sprite, 0, 2, 16, 16),
+]
+p2bullet = [
+    get_bullet(bullets_sprite, 0, 3, 16, 16),
+    get_bullet(bullets_sprite, 0, 4, 16, 16),
+    get_bullet(bullets_sprite, 0, 5, 16, 16),
+]
+botbullet = [
+    get_bullet(bullets_sprite, 0, 6, 16, 16),
+    get_bullet(bullets_sprite, 0, 7, 16, 16),
+    get_bullet(bullets_sprite, 0, 8, 16, 16),
+]
 
 class Button:
     def __init__(self, text, x_pos, y_pos, enabled):
@@ -111,12 +143,79 @@ class Button:
                 return True
         return False
 
-class Bullet:
-    pass
+class Explosion:
+    def __init__(self, x, y, explosion_type='small'):
+        if explosion_type == 'small':
+            self.frames = explosion_small_f
+            self.scale = 0.8
+        else:
+            self.frames = explosion_big_f
+            self.scale = 1.8
+
+        # Scaling frames guys!
+        if self.scale != 1.0:
+            size = int(64 * self.scale)
+            self.frames = [pygame.transform.scale(f, (size, size)) for f in self.frames]
+
+        self.current_frame = 0
+        self.animation_speed = 2
+        self.frame_counter = 0
+        self.x = x
+        self.y = y
+
+    def update(self, surface):
+        if self.current_frame < len(self.frames):
+            frame = self.frames[self.current_frame]
+            rect = frame.get_rect(center=(self.x, self.y))
+            surface.blit(frame, rect)
+
+    def is_finished(self):
+        return self.current_frame >= len(self.frames)
+
+class bullet:
+    def __init__(self, x, y, dir, bullet_frames=None):
+        if bullet_frames is None:
+            bullet_frames = [get_bullet(bullets_sprite, 0, 0, 16, 16)]
+            self.frames = bullet_frames
+            self.current_frames = 0
+            self.animation_speed = 2
+            self.animation_counter = 0
+            self.dir = dir
+            self.speed = bullet_speed
+            self.original_img = self.frames[0]
+
+            if dir == -1:
+                self.img = pygame.transform.flip(self.original_img, True, False)
+            else:
+                self.img = self.original_img
+
+            self.rect = self.img.get_rect()
+            self.rect.x = x
+            self.rect.y = y
+
+    def update(self):
+        self.rect.x += self.speed * self.dir
+        if len(self.frames) > 1:
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.current_frames = (self.current_frames + 1) % len(self.frames)
+                self.original_img = self.frames[self.current_frames]
+                if self.dir == -1:
+                    self.img = pygame.transform.flip(self.original_img, True, False)
+                else:
+                    self.img = self.original_img
+
+    def draw(self, surface):
+        surface.blit(self.img, self.rect)
+    
+    def is_off_screen(self):
+        return self.rect.x < 0 or self.rect.x > WIDTH + 20
 
 
 class Tank:
-    def __init__(self, x, y, image, player_type):
+    def __init__(self, x, y, image, player_type, controls=None):
+        # PLAYER
         self.original_image = pygame.transform.scale(image, (P_WIDTH, P_HEIGHT))
         self.image = self.original_image
         self.rect = self.image.get_rect()
@@ -126,13 +225,27 @@ class Tank:
         self.rect.y = y
         self.width = P_WIDTH
         self.height = P_HEIGHT
-        self.vel = 3 
+        self.vel = 3
         self.angle = 0
         self.health = 100
+        self.max_health = 100
         self.player_type = player_type
+        self.controls = controls
+        self.bullet = []
+        self.alive = True
 
-    def move(self, keys_pressed):
+        # BOT
+        self.bot_dir = 'idle'
+        self.bot_timer = 0
+        self.shoot_cooldown = 0
 
+
+    def move(self, keys_pressed, other_tank=None):
+        if not self.alive:
+            return
+        
+        old_x = self.x
+        old_y = self.y
 
         # Player 1 controls - WASD
         if self.player_type == "P1":
@@ -228,7 +341,7 @@ def VSPLAYER():
         pygame.draw.rect(WIN, METAL, (0, 0, WIDTH, 75))
         pygame.draw.line(WIN, GOLD, (0, 75), (WIDTH, 75), 3)
 
-        title = font_hud.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
+        title = bfont.render("PLAYER 1 VS PLAYER 2", 1, WHITE)
         WIN.blit(title, (WIDTH//2 - title.get_width()//2, 20))
 
         # Draw tanks
