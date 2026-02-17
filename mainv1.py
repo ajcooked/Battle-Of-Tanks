@@ -12,188 +12,175 @@ import random
 
 pygame.mixer.init()
 pygame.font.init()
-pygame.display.set_caption("Battle of Tanks")
 
-# UI
-bounce_time = 0
-bounce_speed = 1
-bounce_amplitude = 15
-GRID_SIZE = 30
-GRID_SPEED = 1
-grid_offset_x = 0
-grid_offset_y = 0
-grid_time = 0
-CB = (203, 203, 203)
-WHITE = (255, 255, 255)
-WHITE2 = (255, 255, 227)
-BLACK = (20, 20, 25)
-BLACK2 = (74, 74, 74)
-GREEN = (40, 255, 40)
-RED = (255, 40, 40)
-GRAY = (100, 105, 110)
-METAL = (50, 55, 60)
-GOLD = (255, 215, 0)
-DEEP_BLUE = (20, 25, 30)
-CRATE_COLOR = (139, 69, 19)
-
-# Variables
-FPS = 60
+# ========== CONSTANTS ==========
 WIDTH, HEIGHT = 800, 600
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-P_WIDTH, P_HEIGHT = 80, 80
-BORDER = pygame.Rect(WIDTH//2 - 5, 0, 10, HEIGHT)
-bullet_speed = 7
+FPS = 60
+TANK_SIZE = 80
+BULLET_SIZE = 24
+BULLET_SPEED = 7
+TANK_SPEED = 3
+HEADER_HEIGHT = 60
+GRID_SIZE = 30
 
-# Image Import/Adjustment
-BG = pygame.image.load(os.path.join('Assets', 'bg.png')).convert()
-BG = pygame.transform.scale(BG, (WIDTH, HEIGHT))
-PLAYER1_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P1.png')).convert_alpha()
-PLAYER2_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'P2.png')).convert_alpha()
-ROCK1 = pygame.image.load(os.path.join('Assets', 'Sprites', 'rock1.png')).convert_alpha()
-ROCK2 = pygame.image.load(os.path.join('Assets', 'Sprites', 'rock2.png')).convert_alpha()
-BOT_TANK_IMAGE = pygame.image.load(os.path.join('Assets', 'Sprites', 'BOT.png')).convert_alpha()
-bullets_sprite = pygame.image.load(os.path.join('Assets', 'Sprites', 'Bullets.png')).convert_alpha()
-tank_explode = pygame.image.load(os.path.join('Assets', 'Sprites', 'explosion.png')).convert_alpha()
-explosion_sheet_1 = tank_explode
-explosion_sheet_2 = tank_explode
+# Colors
+COLOR = {
+    'bg': (45, 48, 50),
+    'grid': (55, 58, 60),
+    'ui_bg': (20, 20, 25),
+    'ui_metal': (50, 55, 60),
+    'ui_gold': (255, 215, 0),
+    'ui_deep_blue': (20, 25, 30),
+    'ui_cb': (203, 203, 203),
+    'white': (255, 255, 255),
+    'white2': (255, 255, 227),
+    'gray': (100, 105, 110),
+    'green': (40, 255, 40),
+    'red': (255, 40, 40),
+}
+
+# ========== GAME SETUP ==========
+WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Battle of Tanks")
+clock = pygame.time.Clock()
+
+# ========== ASSETS ==========
+def load_image(path, scale=None):
+    img = pygame.image.load(os.path.join('Assets', path)).convert_alpha()
+    return pygame.transform.scale(img, scale) if scale else img
+
+def load_sprite(sheet, row, col, size=(16, 16), scale=None):
+    surf = pygame.Surface(size, pygame.SRCALPHA)
+    surf.blit(sheet, (0, 0), (col * size[0], row * size[1], *size))
+    return pygame.transform.scale(surf, scale) if scale else surf.convert_alpha()
+
+# Images
+img_bg = load_image('bg.png', (WIDTH, HEIGHT))
+img_tank_p1 = load_image('Sprites/P1.png')
+img_tank_p2 = load_image('Sprites/P2.png')
+img_tank_bot = load_image('Sprites/BOT.png')
+img_rock = load_image('Sprites/rock1.png')
+img_bullet_sheet = load_image('Sprites/Bullets.png')
+img_explosion_sheet = load_image('Sprites/explosion.png')
 
 # Fonts
-ftitle = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 60)
-bfont = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 24)
+font_title = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 60)
+font_button = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 24)
 
+# Bullets & Explosions
+bullets_p1 = [load_sprite(img_bullet_sheet, 0, i, (16, 16), (BULLET_SIZE, BULLET_SIZE)) for i in range(3)]
+bullets_p2 = [load_sprite(img_bullet_sheet, 0, i + 3, (16, 16), (BULLET_SIZE, BULLET_SIZE)) for i in range(3)]
+bullets_bot = [load_sprite(img_bullet_sheet, 0, i + 6, (16, 16), (BULLET_SIZE, BULLET_SIZE)) for i in range(3)]
 
-def draw_moving_grid(surface, offset_x, offset_y, grid_size=GRID_SIZE):
-    for x in range(-grid_size, WIDTH + grid_size, grid_size):
-        pygame.draw.line(surface, CB, (x + offset_x, 0), (x + offset_x, HEIGHT), 1)
-    for y in range(-grid_size, HEIGHT + grid_size, grid_size):
-        pygame.draw.line(surface, CB, (0, y + offset_y), (WIDTH, y + offset_y), 1)
+def load_music(filename):
+    try:
+        pygame.mixer.music.load(os.path.join('Assets', filename))
+        return True
+    except:
+        print(f"Warning: {filename} not fount")
+        return False
+    
+def play_music(filename, volume=0.5, loops=-1):
+    if load_music(filename):
+        pygame.mixer.music.play(loops)
+        pygame.mixer.music.set_volume(volume)
+sound_shoot = None
+try:
+    sound_shoot = pygame.mixer.Sound(os.path.join('Assets', 'shoot.wav'))
+    sound_shoot.set_volume(0.3)
+    print("✓ Shoot sound loaded!")
+except:
+    print("✗ Warning: shoot.wav not found")
 
-
-def draw_battlefield(surface):
-    surface.fill((45, 48, 50))
-    for x in range(0, WIDTH, 50):
-        pygame.draw.line(surface, (55, 58, 60), (x, 60), (x, HEIGHT))
-    for y in range(60, HEIGHT, 50):
-        pygame.draw.line(surface, (55, 58, 60), (0, y), (WIDTH, y))
-    pygame.draw.rect(surface, (255, 215, 0), (WIDTH//2 - 1, 60, 2, HEIGHT))
-
-
-def get_explode_frames(sheet, num_frames=10, frame_w=64, frame_h=64):
+def get_explosion_frames(sheet, num=10, size=64, scale=1.0):
     frames = []
-    for i in range(num_frames):
-        frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
-        frame.blit(sheet, (0, 0), (i * frame_w, 0, frame_w, frame_h))
-        frames.append(frame.convert_alpha())
+    for i in range(num):
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        surf.blit(sheet, (0, 0), (i * size, 0, size, size))
+        if scale != 1.0:
+            surf = pygame.transform.scale(surf, (int(size * scale), int(size * scale)))
+        frames.append(surf.convert_alpha())
     return frames
 
+explosion_small = get_explosion_frames(img_explosion_sheet, scale=0.6)
+explosion_big = get_explosion_frames(img_explosion_sheet, scale=1.4)
 
-def get_bullet(sheet, row, col, w=16, h=16):
-    bullet = pygame.Surface((w, h), pygame.SRCALPHA)
-    bullet.blit(sheet, (0, 0), (col * w, row * h, w, h))
-    return bullet.convert_alpha()
+# ========== UI GLOBALS ==========
+grid_offset_x = grid_offset_y = bounce_time = 0
 
+# ========== HELPER FUNCTIONS ==========
+def draw_grid(surface, offset_x, offset_y):
+    for i in range(-GRID_SIZE, max(WIDTH, HEIGHT) + GRID_SIZE, GRID_SIZE):
+        if i + offset_x < WIDTH:
+            pygame.draw.line(surface, COLOR['ui_cb'], (i + offset_x, 0), (i + offset_x, HEIGHT), 1)
+        if i + offset_y < HEIGHT:
+            pygame.draw.line(surface, COLOR['ui_cb'], (0, i + offset_y), (WIDTH, i + offset_y), 1)
 
-# Frames for explosion animation/bullet sprites
-explosion_small_f = get_explode_frames(explosion_sheet_1, 10, 64, 64)
-explosion_big_f = get_explode_frames(explosion_sheet_2, 10, 64, 64)
-p1bullet = [
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 0, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 1, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 2, 16, 16), (24, 24)),
-]
-p2bullet = [
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 3, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 4, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 5, 16, 16), (24, 24)),
-]
-botbullet = [
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 6, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 7, 16, 16), (24, 24)),
-    pygame.transform.scale(get_bullet(bullets_sprite, 0, 8, 16, 16), (24, 24)),
-]
+def draw_battlefield(surface):
+    surface.fill(COLOR['bg'])
+    for x in range(0, WIDTH, 50):
+        pygame.draw.line(surface, COLOR['grid'], (x, HEADER_HEIGHT), (x, HEIGHT))
+    for y in range(HEADER_HEIGHT, HEIGHT, 50):
+        pygame.draw.line(surface, COLOR['grid'], (0, y), (WIDTH, y))
+    pygame.draw.rect(surface, COLOR['ui_gold'], (WIDTH // 2 - 1, HEADER_HEIGHT, 2, HEIGHT - HEADER_HEIGHT))
 
+def draw_header(surface, title):
+    pygame.draw.rect(surface, COLOR['ui_bg'], (0, 0, WIDTH, HEADER_HEIGHT))
+    pygame.draw.rect(surface, COLOR['ui_metal'], (0, 0, WIDTH, HEADER_HEIGHT - 3))
+    pygame.draw.line(surface, COLOR['ui_gold'], (0, HEADER_HEIGHT - 3), (WIDTH, HEADER_HEIGHT - 3), 3)
+    txt = font_button.render(title, True, COLOR['white'])
+    surface.blit(txt, (WIDTH // 2 - txt.get_width() // 2, 15))
+
+# ========== CLASSES ==========
 class Button:
-    def __init__(self, text, x_pos, y_pos, enabled):
+    def __init__(self, text, x, y, w=350, h=70):
         self.text = text
-        self.x_pos = x_pos
-        self.y_pos = y_pos
-        self.enabled = enabled
-        self.button_rect = pygame.rect.Rect((self.x_pos, self.y_pos), (350, 70))
+        self.rect = pygame.Rect(x, y, w, h)
         
-    def draw(self):
-        button_text = bfont.render(self.text, True, 'black')
-        if self.enabled:
-            if self.is_hovered():
-                pygame.draw.rect(WIN, DEEP_BLUE, self.button_rect, 0, 20)
-            else:
-                pygame.draw.rect(WIN, CB, self.button_rect, 0, 20)
-        else:
-            pygame.draw.rect(WIN, METAL, self.button_rect, 3, 20)
-        text_rect = button_text.get_rect(center=self.button_rect.center)
-        WIN.blit(button_text, text_rect)
-
+    def draw(self, surface):
+        color = COLOR['ui_deep_blue'] if self.is_hovered() else COLOR['ui_cb']
+        pygame.draw.rect(surface, color, self.rect, border_radius=20)
+        txt = font_button.render(self.text, True, COLOR['ui_bg'])
+        surface.blit(txt, txt.get_rect(center=self.rect.center))
+    
     def is_hovered(self):
-        mouse_pos = pygame.mouse.get_pos()
-        return self.button_rect.collidepoint(mouse_pos)
-
-    def check_click(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.button_rect.collidepoint(event.pos) and self.enabled:
-                return True
-        return False
+        return self.rect.collidepoint(pygame.mouse.get_pos())
+    
+    def is_clicked(self, event):
+        return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.is_hovered()
 
 
 class Explosion:
-    def __init__(self, x, y, explosion_type='small'):
-        if explosion_type == 'small':
-            self.frames = explosion_small_f
-            self.scale = 0.6
-        else:
-            self.frames = explosion_big_f
-            self.scale = 1.4
-
-        if self.scale != 1.0:
-            size = int(64 * self.scale)
-            self.frames = [pygame.transform.scale(f, (size, size)) for f in self.frames]
-
-        self.current_frame = 0
-        self.animation_speed = 2
-        self.frame_counter = 0
-        self.x = x
-        self.y = y
-
+    def __init__(self, x, y, big=False):
+        self.frames = explosion_big if big else explosion_small
+        self.x, self.y = x, y
+        self.frame = 0
+        self.speed = 2
+        self.counter = 0
+    
     def update(self):
-        self.frame_counter += 1
-        if self.frame_counter >= self.animation_speed:
-            self.frame_counter = 0
-            self.current_frame += 1
-
+        self.counter += 1
+        if self.counter >= self.speed:
+            self.counter = 0
+            self.frame += 1
+    
     def draw(self, surface):
-        if self.current_frame < len(self.frames):
-            frame = self.frames[self.current_frame]
-            rect = frame.get_rect(center=(self.x, self.y))
-            surface.blit(frame, rect)
-
+        if self.frame < len(self.frames):
+            surface.blit(self.frames[self.frame], self.frames[self.frame].get_rect(center=(self.x, self.y)))
+    
     def is_finished(self):
-        return self.current_frame >= len(self.frames)
+        return self.frame >= len(self.frames)
 
 
 class Rock:
-    def __init__(self, x, y, rock_type=1):
-        self.rock_type = rock_type
-        if rock_type == 1:
-            self.original_image = pygame.transform.scale(ROCK1, (60, 60))
-        else:
-            self.original_image = pygame.transform.scale(ROCK2, (60, 60))
-        self.image = self.original_image
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+    def __init__(self, x, y, size=80):  # ← Changed default from 60 to 80
+        self.image = pygame.transform.scale(img_rock, (size, size))  # ← Use img_rock
+        self.rect = self.image.get_rect(topleft=(x, y))
         self.health = 30
         self.alive = True
-
-    def take_damage(self, damage):
-        self.health -= damage
+    
+    def take_damage(self, dmg):
+        self.health -= dmg
         if self.health <= 0:
             self.alive = False
     
@@ -203,346 +190,262 @@ class Rock:
 
 
 class Bullet:
-    def __init__(self, x, y, direction, bullet_frames=None):
-        if bullet_frames is None:
-            bullet_frames = [get_bullet(bullets_sprite, 0, 0, 16, 16)]
-        
-        self.frames = bullet_frames
-        self.current_frames = 0
-        self.animation_speed = 5
-        self.animation_counter = 0
-        
+    DIRECTIONS = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}
+    
+    def __init__(self, x, y, direction, frames):
+        self.frames = frames
         self.direction = direction
-        self.speed = bullet_speed
-        self.original_img = self.frames[0]
+        self.dx, self.dy = self.DIRECTIONS[direction]
+        self.frame_idx = 0
+        self.anim_counter = 0
+        self.anim_speed = 5
         
-        # Rotate bullet based on direction
-        if direction == 'left':
-            self.img = pygame.transform.flip(self.original_img, True, False)
-        elif direction == 'up':
-            self.img = pygame.transform.rotate(self.original_img, 90)
-        elif direction == 'down':
-            self.img = pygame.transform.rotate(self.original_img, -90)
-        else:  # right
-            self.img = self.original_img
+        self.rect = pygame.Rect(x, y, BULLET_SIZE, BULLET_SIZE)
+        self.update_image()
+    
+    def update_image(self):
+        """Update the current image based on frame and direction"""
+        img = self.frames[self.frame_idx]
         
-        self.rect = self.img.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-
-    def update(self):
+        # Rotate based on direction
         if self.direction == 'left':
-            self.rect.x -= self.speed
-        elif self.direction == 'right':
-            self.rect.x += self.speed
+            img = pygame.transform.flip(img, True, False)
         elif self.direction == 'up':
-            self.rect.y -= self.speed
+            img = pygame.transform.rotate(img, 90)
         elif self.direction == 'down':
-            self.rect.y += self.speed
+            img = pygame.transform.rotate(img, -90)
+        # 'right' stays as is
+        
+        self.image = img
+    
+    def update(self):
+        self.rect.x += self.dx * BULLET_SPEED
+        self.rect.y += self.dy * BULLET_SPEED
         
         # Animate
-        if len(self.frames) > 1:
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.current_frames = (self.current_frames + 1) % len(self.frames)
-                self.original_img = self.frames[self.current_frames]
-                
-                # Update rotated image
-                if self.direction == 'left':
-                    self.img = pygame.transform.flip(self.original_img, True, False)
-                elif self.direction == 'up':
-                    self.img = pygame.transform.rotate(self.original_img, 90)
-                elif self.direction == 'down':
-                    self.img = pygame.transform.rotate(self.original_img, -90)
-                else:
-                    self.img = self.original_img
-
+        self.anim_counter += 1
+        if self.anim_counter >= self.anim_speed and len(self.frames) > 1:
+            self.anim_counter = 0
+            self.frame_idx = (self.frame_idx + 1) % len(self.frames)
+            self.update_image()  # ← Update the rotated image!
+    
     def draw(self, surface):
-        surface.blit(self.img, self.rect)
+        surface.blit(self.image, self.rect)
     
     def is_off_screen(self):
-        return (self.rect.x < -20 or self.rect.x > WIDTH + 20 or
-                self.rect.y < -20 or self.rect.y > HEIGHT + 20)
+        return not (-20 < self.rect.x < WIDTH + 20 and -20 < self.rect.y < HEIGHT + 20)
 
 
 class Tank:
-    def __init__(self, x, y, image, player_type, controls=None):
-        self.original_image = pygame.transform.scale(image, (P_WIDTH, P_HEIGHT))
-        self.image = self.original_image
-        self.rect = self.image.get_rect()
-        self.x = x
-        self.y = y
-        self.rect.x = x
-        self.rect.y = y
-        self.width = P_WIDTH
-        self.height = P_HEIGHT
-        self.vel = 3
-        self.angle = 0
-        self.health = 100
-        self.max_health = 100
-        self.player_type = player_type
+    def __init__(self, x, y, image, tank_type, controls=None):
+        self.image_orig = pygame.transform.scale(image, (TANK_SIZE, TANK_SIZE))
+        self.rect = self.image_orig.get_rect(topleft=(x, y))
+        self.tank_type = tank_type
         self.controls = controls
         self.bullets = []
+        self.health = 100
         self.alive = True
-        
-
-        # BOT
-        self.bot_dir = 'idle'
-        self.bot_timer = 0
+        self.angle = 0
         self.shoot_cooldown = 0
 
-    def move(self, keys_pressed, other_tank=None, center_barrier=None, rocks=None):
+        if tank_type == 'P1':
+            self.angle = 270  # Player 1 faces RIGHT →
+        else:  # P2 or BOT
+            self.angle = 90   # Player 2/Bot faces LEFT ←
+        
+        # Bot AI
+        self.is_bot = (tank_type == 'BOT')
+        self.bot_dir = 'idle'
+        self.bot_timer = 0
+    
+    def move(self, keys, other_tank=None, barrier=None, rocks=None):
         if not self.alive:
             return
         
-        old_x = self.x
-        old_y = self.y
-
-        # BOT MOVEMENT
-        if self.player_type == 'BOT':
-            # Find the player tank (pass it as a parameter)
-            if other_tank is not None and other_tank.alive:
-                # Calculate direction to player
-                dx = other_tank.rect.centerx - self.rect.centerx
-                dy = other_tank.rect.centery - self.rect.centery
-                
-                # Random decision timer
-                self.bot_timer -= 1
-                if self.bot_timer <= 0:
-                    # 70% chance to chase player, 30% random movement
-                    if random.random() < 0.7:
-                        # Move toward player
-                        if abs(dx) > abs(dy):  # Horizontal difference is larger
-                            if dx > 0:
-                                self.bot_dir = 'right'
-                            else:
-                                self.bot_dir = 'left'
-                        else:  # Vertical difference is larger
-                            if dy > 0:
-                                self.bot_dir = 'down'
-                            else:
-                                self.bot_dir = 'up'
-                    else:
-                        # Random movement
-                        self.bot_dir = random.choice(['up', 'down', 'left', 'right', 'idle'])
-                    
-                    self.bot_timer = random.randint(20, 50)
-                
-                # Execute movement
-                if self.bot_dir == 'up' and self.y - self.vel > 60:
-                    self.y -= self.vel
-                    self.angle = 0
-                elif self.bot_dir == 'down' and self.y + self.vel + self.height < HEIGHT:
-                    self.y += self.vel
-                    self.angle = 180
-                elif self.bot_dir == 'left' and self.x - self.vel > 0:
-                    self.x -= self.vel
-                    self.angle = 90
-                elif self.bot_dir == 'right' and self.x + self.vel + self.width < WIDTH:
-                    self.x += self.vel
-                    self.angle = 270
-                
-                # Smart shooting: shoot when roughly aligned with player
-                if abs(dy) < 40:  # Vertically aligned (within 40 pixels)
-                    if random.random() < 0.05:  # 5% chance
-                        self.shoot()
-                elif abs(dx) < 40:  # Horizontally aligned (within 40 pixels)
-                    if random.random() < 0.05:
-                        self.shoot()
-                elif random.random() < 0.01:  # 1% chance otherwise
-                    self.shoot()
+        old_x = self.rect.x
+        old_y = self.rect.y
         
-        # P1 WASD
-        elif self.player_type == 'P1':
-            if keys_pressed[pygame.K_a] and self.x - self.vel > 0:
-                self.x -= self.vel
-                self.angle = 90
-            if keys_pressed[pygame.K_d] and self.x + self.vel + self.width < WIDTH:
-                self.x += self.vel
-                self.angle = 270
-            if keys_pressed[pygame.K_w] and self.y - self.vel > 60:
-                self.y -= self.vel
-                self.angle = 0
-            if keys_pressed[pygame.K_s] and self.y + self.vel + self.height < HEIGHT:
-                self.y += self.vel
-                self.angle = 180
-
-        # P2 Arrow Keys
-        elif self.player_type == "P2":
-            if keys_pressed[pygame.K_LEFT] and self.x - self.vel > 0:
-                self.x -= self.vel
-                self.angle = 90
-            if keys_pressed[pygame.K_RIGHT] and self.x + self.vel + self.width < WIDTH:
-                self.x += self.vel
-                self.angle = 270
-            if keys_pressed[pygame.K_UP] and self.y - self.vel > 60:
-                self.y -= self.vel
-                self.angle = 0
-            if keys_pressed[pygame.K_DOWN] and self.y + self.vel + self.height < HEIGHT:
-                self.y += self.vel
-                self.angle = 180
-
-        self.rect.x = self.x
-        self.rect.y = self.y
-
-        # Center Line Collision
-        if center_barrier is not None and self.rect.colliderect(center_barrier):
-            self.x = old_x
-            self.y = old_y
-            self.rect.x = self.x
-            self.rect.y = self.y
+        # Bot AI
+        if self.is_bot:
+            self.bot_timer -= 1
+            if self.bot_timer <= 0:
+                self.bot_dir = random.choice(['up', 'down', 'left', 'right', 'idle'])
+                self.bot_timer = random.randint(30, 60)
             
-        # Rock Collision
-        if rocks is not None:
+            if self.bot_dir == 'up' and self.rect.y - TANK_SPEED > HEADER_HEIGHT:
+                self.rect.y -= TANK_SPEED
+                self.angle = 0
+            elif self.bot_dir == 'down' and self.rect.bottom + TANK_SPEED < HEIGHT:
+                self.rect.y += TANK_SPEED
+                self.angle = 180
+            elif self.bot_dir == 'left' and self.rect.x - TANK_SPEED > 0:
+                self.rect.x -= TANK_SPEED
+                self.angle = 90
+            elif self.bot_dir == 'right' and self.rect.right + TANK_SPEED < WIDTH:
+                self.rect.x += TANK_SPEED
+                self.angle = 270
+            
+            if random.random() < 0.02:
+                self.shoot()
+        
+        # Player controls
+        elif keys and self.controls:
+            if keys[self.controls['up']] and self.rect.y - TANK_SPEED > HEADER_HEIGHT:
+                self.rect.y -= TANK_SPEED
+                self.angle = 0
+            if keys[self.controls['down']] and self.rect.bottom + TANK_SPEED < HEIGHT:
+                self.rect.y += TANK_SPEED
+                self.angle = 180
+            if keys[self.controls['left']] and self.rect.x - TANK_SPEED > 0:
+                self.rect.x -= TANK_SPEED
+                self.angle = 90
+            if keys[self.controls['right']] and self.rect.right + TANK_SPEED < WIDTH:
+                self.rect.x += TANK_SPEED
+                self.angle = 270
+        
+        # ========== CHECK ALL COLLISIONS ==========
+        collision_detected = False
+        
+        # Barrier collision (CENTER LINE)
+        if barrier and self.rect.colliderect(barrier):
+            collision_detected = True
+        
+        # Rock collision
+        if not collision_detected and rocks:
             for rock in rocks:
                 if rock.alive and self.rect.colliderect(rock.rect):
-                    self.x = old_x
-                    self.y = old_y
-                    self.rect.x = self.x
-                    self.rect.y = self.y
+                    collision_detected = True
                     break
-
+        
         # Tank collision
-        if other_tank is not None and other_tank.alive:
+        if not collision_detected and other_tank and other_tank.alive:
             if self.rect.colliderect(other_tank.rect):
-                self.x = old_x
-                self.y = old_y
-                self.rect.x = self.x
-                self.rect.y = self.y
-
+                collision_detected = True
+        
+        # If any collision, restore old position
+        if collision_detected:
+            self.rect.x = old_x
+            self.rect.y = old_y
+        
         if self.shoot_cooldown > 0:
             self.shoot_cooldown -= 1
-
+    
     def shoot(self):
         if not self.alive or len(self.bullets) >= 5 or self.shoot_cooldown > 0:
             return
         
-        print(f"{self.player_type} SHOOTING! Angle: {self.angle}")
+        # Calculate bullet spawn position based on tank angle
+        half_bullet = BULLET_SIZE // 2
         
         if self.angle == 0:  # UP
-            bx = self.rect.centerx - 12
-            by = self.rect.top - 24
+            bx = self.rect.centerx - half_bullet
+            by = self.rect.top - BULLET_SIZE
             direction = 'up'
         elif self.angle == 90:  # LEFT
-            bx = self.rect.left - 24
-            by = self.rect.centery - 12
+            bx = self.rect.left - BULLET_SIZE
+            by = self.rect.centery - half_bullet
             direction = 'left'
         elif self.angle == 180:  # DOWN
-            bx = self.rect.centerx - 12
+            bx = self.rect.centerx - half_bullet
             by = self.rect.bottom
             direction = 'down'
         elif self.angle == 270:  # RIGHT
             bx = self.rect.right
-            by = self.rect.centery - 12
+            by = self.rect.centery - half_bullet
             direction = 'right'
         else:
-            bx = self.rect.centerx - 12
-            by = self.rect.top - 24
+            bx = self.rect.centerx - half_bullet
+            by = self.rect.top - BULLET_SIZE
             direction = 'up'
-
-        if self.player_type == 'P1':
-            bullet_frame = p1bullet
-        elif self.player_type == 'P2':
-            bullet_frame = p2bullet
+        
+        # Choose bullet sprite
+        if self.tank_type == 'P1':
+            frames = bullets_p1
+        elif self.tank_type == 'P2':
+            frames = bullets_p2
         else:
-            bullet_frame = botbullet
+            frames = bullets_bot
         
-        new_bullet = Bullet(bx, by, direction, bullet_frame)
-        self.bullets.append(new_bullet)
+        self.bullets.append(Bullet(bx, by, direction, frames))
         self.shoot_cooldown = 30
-        print(f"Bullet created! Direction: {direction}, Total: {len(self.bullets)}")
 
-    def update_bullets(self, enemy_tank, explosions, rocks=None):
-        """Update bullets and collisions"""
-        bullets_to_remove = []
+        if sound_shoot:
+            sound_shoot.play()
         
-        for bul in self.bullets[:]:
-            bul.update()
+        print(f"{self.tank_type} shot bullet at ({bx}, {by}), direction: {direction}")  # ← DEBUG
+    
+    def update_bullets(self, enemy, explosions, rocks=None):
+        to_remove = []
         
-            if bul.is_off_screen():
-                bullets_to_remove.append(bul)
+        for bullet in self.bullets:
+            bullet.update()
+            
+            if bullet.is_off_screen():
+                to_remove.append(bullet)
                 continue
-
-            # ========== BULLET vs ROCK COLLISION ==========
-            if rocks is not None:
+            
+            # Rock collision
+            if rocks:
                 for rock in rocks:
-                    if rock.alive and bul.rect.colliderect(rock.rect):
+                    if rock.alive and bullet.rect.colliderect(rock.rect):
                         rock.take_damage(10)
-                        
-                        # Create explosion
-                        exp_type = 'small' if rock.alive else 'big'
-                        exp = Explosion(bul.rect.centerx, bul.rect.centery, exp_type)
-                        explosions.append(exp)
-                        
-                        bullets_to_remove.append(bul)
+                        explosions.append(Explosion(bullet.rect.centerx, bullet.rect.centery, not rock.alive))
+                        to_remove.append(bullet)
                         break
-                
-                if bul in bullets_to_remove:
+                if bullet in to_remove:
                     continue
-
-            # ========== BULLET vs ENEMY TANK COLLISION ==========
-            if enemy_tank and enemy_tank.alive and bul.rect.colliderect(enemy_tank.rect):
-                enemy_tank.health -= 10
+            
+            # Enemy collision
+            if enemy and enemy.alive and bullet.rect.colliderect(enemy.rect):
+                enemy.health -= 10
+                explosions.append(Explosion(bullet.rect.centerx, bullet.rect.centery, False))
+                to_remove.append(bullet)
                 
-                small_exp = Explosion(bul.rect.centerx, bul.rect.centery, 'small')
-                explosions.append(small_exp)
-
-                bullets_to_remove.append(bul)
-
-                if enemy_tank.health <= 0:
-                    enemy_tank.alive = False
-                    for i in range(3):
-                        offset_x = random.randint(-15, 15)
-                        offset_y = random.randint(-15, 15)
-                        big_exp = Explosion(
-                            enemy_tank.rect.centerx + offset_x,
-                            enemy_tank.rect.centery + offset_y, 
-                            'big'
-                        )
-                        explosions.append(big_exp)
+                if enemy.health <= 0:
+                    enemy.alive = False
+                    for _ in range(3):
+                        ox, oy = random.randint(-15, 15), random.randint(-15, 15)
+                        explosions.append(Explosion(enemy.rect.centerx + ox, enemy.rect.centery + oy, True))
         
-        # Remove all marked bullets at once
-        for bul in bullets_to_remove:
-            if bul in self.bullets:
-                self.bullets.remove(bul)
-
+        for bullet in to_remove:
+            if bullet in self.bullets:
+                self.bullets.remove(bullet)
+    
     def draw(self, surface):
         if not self.alive:
             return
-
-        rotated_image = pygame.transform.rotate(self.original_image, self.angle)
-        rotated_rect = rotated_image.get_rect(center=(self.x + self.width//2, self.y + self.height//2))
-        surface.blit(rotated_image, rotated_rect)
-
-        health_bar_width = 80
-        health_bar_height = 10
-        health_ratio = max(0, self.health / self.max_health)
-        health_bar_x = self.x + (self.width // 2) - (health_bar_width // 2)
-        health_bar_y = self.y - 15
-
-        pygame.draw.rect(surface, RED,
-                        (health_bar_x, health_bar_y, health_bar_width, health_bar_height),
-                        border_radius=5)
-        pygame.draw.rect(surface, GREEN,
-                        (health_bar_x, health_bar_y, health_bar_width * health_ratio, health_bar_height),
-                        border_radius=5)
         
-        for bul in self.bullets:
-            bul.draw(surface)
+        # Tank
+        rotated = pygame.transform.rotate(self.image_orig, self.angle)
+        surface.blit(rotated, rotated.get_rect(center=self.rect.center))
+        
+        # Health bar
+        bar_w, bar_h = 80, 10
+        ratio = max(0, self.health / 100)
+        bar_x = self.rect.centerx - bar_w // 2
+        bar_y = self.rect.top - 15
+        
+        pygame.draw.rect(surface, COLOR['red'], (bar_x, bar_y, bar_w, bar_h), border_radius=5)
+        pygame.draw.rect(surface, COLOR['green'], (bar_x, bar_y, bar_w * ratio, bar_h), border_radius=5)
+        
+        # Bullets
+        for bullet in self.bullets:
+            bullet.draw(surface)
 
 
+# ========== GAME FUNCTIONS ==========
 def show_victory(text, color):
     overlay = pygame.Surface((WIDTH, HEIGHT))
     overlay.set_alpha(200)
     overlay.fill((0, 0, 0))
     WIN.blit(overlay, (0, 0))
-
-    win_text = ftitle.render(text, True, color)
-    WIN.blit(win_text, (WIDTH//2 - win_text.get_width()//2, HEIGHT//2 - 50))
-
-    continue_txt = bfont.render("Press any key to continue...", True, CB)
-    WIN.blit(continue_txt, (WIDTH//2 - continue_txt.get_width()//2, HEIGHT//2 + 50))
+    
+    txt = font_title.render(text, True, color)
+    WIN.blit(txt, txt.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50)))
+    
+    continue_txt = font_button.render("Press any key to continue...", True, COLOR['ui_cb'])
+    WIN.blit(continue_txt, continue_txt.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50)))
+    
     pygame.display.update()
     
     waiting = True
@@ -555,273 +458,124 @@ def show_victory(text, color):
                 waiting = False
 
 
-def VSPLAYER():
-    clock = pygame.time.Clock()
+def game_loop(vs_bot):
 
-    player1 = Tank(50, 300, PLAYER1_TANK_IMAGE, "P1")
-    player2 = Tank(690, 300, PLAYER2_TANK_IMAGE, "P2")
+    play_music('Game_audio.wav', volume=0.2)
+    tank1 = Tank(50, 300, img_tank_p1, 'P1', {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a, 'right': pygame.K_d})
+    tank2 = Tank(690, 300, img_tank_bot if vs_bot else img_tank_p2, 'BOT' if vs_bot else 'P2',
+                None if vs_bot else {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT})
     
+    barrier = pygame.Rect(WIDTH // 2 - 5, HEADER_HEIGHT, 10, HEIGHT - HEADER_HEIGHT)
+    rocks = [Rock(WIDTH // 2 - 40, y, 80) for y in [150, 280, 410]]  # ← Size 80, centered better
     explosions = []
-
-    center_barrier = pygame.Rect(WIDTH//2 - 5, 60, 10, HEIGHT - 60)
-    rocks = [
-        Rock(WIDTH//2 - 30, 150, rock_type=1),
-        Rock(WIDTH//2 - 30, 280, rock_type=2),
-        Rock(WIDTH//2 - 30, 410, rock_type=1),  # ← FIXED: Changed from 3 to 1
-    ]
-
-    run = True
-    while run:
+    
+    running = True
+    while running:
         clock.tick(FPS)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    run = False
-                    Menu()
-                
-                if event.key == pygame.K_SPACE:
-                    player1.shoot()
-                if event.key == pygame.K_RCTRL:
-                    player2.shoot()
-
-        keys_pressed = pygame.key.get_pressed()
-
-        # ← FIXED: Added center_barrier and rocks parameters
-        player1.move(keys_pressed, player2, center_barrier, rocks)
-        player2.move(keys_pressed, player1, center_barrier, rocks)
-
-        player1.update_bullets(player2, explosions, rocks)
-        player2.update_bullets(player1, explosions, rocks)
-
-        for exp in explosions[:]:
-            exp.update()
-            if exp.is_finished():
-                explosions.remove(exp)
-
-        draw_battlefield(WIN)
-
-        pygame.draw.rect(WIN, BLACK, (0, 0, WIDTH, 60))
-        pygame.draw.rect(WIN, METAL, (0, 0, WIDTH, 57))
-        pygame.draw.line(WIN, GOLD, (0, 57), (WIDTH, 57), 3)
-
-        title = bfont.render("P1 VS P2", 1, WHITE)
-        WIN.blit(title, (WIDTH//2 - title.get_width()//2, 15))
-
-        for rock in rocks:
-            rock.draw(WIN)
         
-        player1.draw(WIN)
-        player2.draw(WIN)
-
-        for exp in explosions:
-            exp.draw(WIN)
-
-        if not player1.alive and len(explosions) == 0:
-            show_victory("PLAYER 2 WINS!", RED)
-            run = False
-            Menu()
-        elif not player2.alive and len(explosions) == 0:
-            show_victory("PLAYER 1 WINS!", GREEN)
-            run = False
-            Menu()
-
-        pygame.display.update()
-
-
-def VSBOT():
-    clock = pygame.time.Clock()
-
-    player1 = Tank(50, 250, PLAYER1_TANK_IMAGE, "P1")
-    bot = Tank(690, 250, BOT_TANK_IMAGE, "BOT")
-    
-    explosions = []
-
-    # ← FIXED: Added center_barrier and rocks
-    center_barrier = pygame.Rect(WIDTH//2 - 5, 60, 10, HEIGHT - 60)
-    rocks = [
-        Rock(WIDTH//2 - 30, 150, rock_type=1),
-        Rock(WIDTH//2 - 30, 280, rock_type=2),
-        Rock(WIDTH//2 - 30, 410, rock_type=1),
-    ]
-
-    run = True
-    while run:
-        clock.tick(FPS)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    run = False
-                    Menu()
-                
+                    pygame.mixer.music.stop()
+                    return
                 if event.key == pygame.K_SPACE:
-                    player1.shoot()
-
-        keys_pressed = pygame.key.get_pressed()
-
-        # ← FIXED: Added center_barrier and rocks parameters
-        player1.move(keys_pressed, bot, center_barrier, rocks)
-        bot.move(keys_pressed, player1, center_barrier, rocks)
-
-        # ← FIXED: Added rocks parameter
-        player1.update_bullets(bot, explosions, rocks)
-        bot.update_bullets(player1, explosions, rocks)
-
-        for exp in explosions[:]:
-            exp.update()
-            if exp.is_finished():
-                explosions.remove(exp)
-
+                    tank1.shoot()
+                if not vs_bot and event.key == pygame.K_RCTRL:
+                    tank2.shoot()
+        
+        keys = pygame.key.get_pressed()
+        tank1.move(keys, tank2, barrier, rocks)
+        tank2.move(keys, tank1, barrier, rocks)
+        
+        tank1.update_bullets(tank2, explosions, rocks)
+        tank2.update_bullets(tank1, explosions, rocks)
+        
+        explosions = [e for e in explosions if not (e.update() or e.is_finished())]
+        
         draw_battlefield(WIN)
-
-        pygame.draw.rect(WIN, BLACK, (0, 0, WIDTH, 60))
-        pygame.draw.rect(WIN, METAL, (0, 0, WIDTH, 57))
-        pygame.draw.line(WIN, GOLD, (0, 57), (WIDTH, 57), 3)
-
-        title = bfont.render("PLAYER VS BOT", 1, WHITE)
-        WIN.blit(title, (WIDTH//2 - title.get_width()//2, 15))
-
-        # ← FIXED: Added rock drawing
+        draw_header(WIN, "PLAYER VS BOT" if vs_bot else "P1 VS P2")
+        
         for rock in rocks:
             rock.draw(WIN)
-
-        player1.draw(WIN)
-        bot.draw(WIN)
-
+        tank1.draw(WIN)
+        tank2.draw(WIN)
         for exp in explosions:
             exp.draw(WIN)
-
-        if not player1.alive and len(explosions) == 0:
-            show_victory("BOT WINS!", RED)
-            run = False
-            Menu()
-        elif not bot.alive and len(explosions) == 0:
-            show_victory("PLAYER WINS!", GREEN)
-            run = False
-            Menu()
-
+        
+        if not tank1.alive:
+            show_victory("BOT WINS!" if vs_bot else "PLAYER 2 WINS!", COLOR['red'])
+            pygame.mixer.music.stop()
+            running = False
+        elif not tank2.alive:
+            show_victory("PLAYER WINS!" if vs_bot else "PLAYER 1 WINS!", COLOR['green'])
+            pygame.mixer.music.stop()
+            running = False
+        
         pygame.display.update()
 
 
-def Mode_Select_WIN():
+def menu():
     global grid_offset_x, grid_offset_y, bounce_time
 
-    clock = pygame.time.Clock()
-    run = True
-    while run:
-        grid_offset_x = (grid_offset_x + GRID_SPEED * 1) % GRID_SIZE
-        grid_offset_y = (grid_offset_y + GRID_SPEED * 1) % GRID_SIZE
+    buttons = [
+        Button('PLAYER VS PLAYER', 225, 200),
+        Button('PLAYER VS BOT', 225, 300),
+        Button('QUIT', 225, 400)
+    ]
+    
+    running = True
+    while running:
 
-        WIN.fill((DEEP_BLUE))
-        draw_moving_grid(WIN, grid_offset_x, grid_offset_y)
-        bg_with_alpha = BG.copy()
-        bg_with_alpha.set_alpha(150)
-        WIN.blit(bg_with_alpha, (0, 0))
+        if not pygame.mixer.music.get_busy():
+            play_music('Menu_audio.wav', volume=0.5)
+        grid_offset_x = (grid_offset_x + 1) % GRID_SIZE
+        grid_offset_y = (grid_offset_y + 1) % GRID_SIZE
         bounce_time += 1
-        bounce_offset = math.sin(bounce_time * 0.05 * bounce_speed) * bounce_amplitude
-
-        T1 = ftitle.render("SELECT MODE", True, GRAY)
-        T1_RECT = T1.get_rect(center=(WIDTH//2, 80))
-        T2 = ftitle.render("SELECT MODE", True, WHITE2)
-        T2_RECT = T2.get_rect(center=(WIDTH//2, 83 + bounce_offset * 0.3))
-
-        Player_button = Button('PLAYER VS PLAYER', 225, 200, True)
-        Bot_button = Button('PLAYER VS BOT', 225, 300, True)
-        Back_button = Button('BACK', 225, 400, True)
-
-        WIN.blit(T1, T1_RECT)
-        WIN.blit(T2, T2_RECT)
-
-        Player_button.draw()
-        Bot_button.draw()
-        Back_button.draw()
-
+        bounce_offset = math.sin(bounce_time * 0.05) * 15
+        
+        WIN.fill(COLOR['ui_deep_blue'])
+        draw_grid(WIN, grid_offset_x, grid_offset_y)
+        
+        bg = img_bg.copy()
+        bg.set_alpha(150)
+        WIN.blit(bg, (0, 0))
+        
+        # Title
+        shadow = font_title.render("BATTLE OF TANKS", True, COLOR['gray'])
+        title = font_title.render("BATTLE OF TANKS", True, COLOR['white2'])
+        WIN.blit(shadow, shadow.get_rect(center=(WIDTH // 2, 80)))
+        WIN.blit(title, title.get_rect(center=(WIDTH // 2, 80 + bounce_offset * 0.3)))
+        
+        # Buttons
+        for btn in buttons:
+            btn.draw(WIN)
+        
+        # Decorative tanks
+        tank_scale = (150, 150)
+        WIN.blit(pygame.transform.scale(img_tank_p1, tank_scale), (WIDTH - 170, int(360 + bounce_offset)))
+        WIN.blit(pygame.transform.scale(img_tank_p2, tank_scale), (20, int(360 - bounce_offset)))
+        
+        pygame.display.update()
         clock.tick(FPS)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
                 pygame.quit()
                 sys.exit()
-
-            if Player_button.check_click(event):
-                run = False
-                VSPLAYER()
-
-            if Bot_button.check_click(event):
-                run = False
-                VSBOT()
-
-            if Back_button.check_click(event):
-                run = False
-                Menu()
-
-        pygame.display.update()
-
-
-def Menu():
-    global grid_offset_x, grid_offset_y, grid_time, bounce_time
-
-    clock = pygame.time.Clock()
-    run = True
-    while run:
-        grid_offset_x = (grid_offset_x + GRID_SPEED * 1) % GRID_SIZE
-        grid_offset_y = (grid_offset_y + GRID_SPEED * 1) % GRID_SIZE
-
-        WIN.fill((DEEP_BLUE))
-        draw_moving_grid(WIN, grid_offset_x, grid_offset_y)
-
-        bg_with_alpha = BG.copy()
-        bg_with_alpha.set_alpha(150)
-        WIN.blit(bg_with_alpha, (0, 0))
-        bounce_time += 1
-        bounce_offset = math.sin(bounce_time * 0.05 * bounce_speed) * bounce_amplitude
-
-        T1 = ftitle.render("BATTLE OF TANKS", True, GRAY)
-        T1_RECT = T1.get_rect(center=(WIDTH//2, 80))
-        T2 = ftitle.render("BATTLE OF TANKS", True, WHITE2)
-        T2_RECT = T2.get_rect(center=(WIDTH//2, 83 + bounce_offset * 0.3))
-        
-        P1 = pygame.transform.scale(PLAYER1_TANK_IMAGE, (150, 150))
-        
-        P2 = pygame.transform.scale(PLAYER2_TANK_IMAGE, (150, 150))
-
-        play_button = Button('PLAY', 225, 230, True)
-        quit_button = Button('QUIT', 225, 350, True)
-        play_button.draw()
-        quit_button.draw()
-
-        WIN.blit(P1, (WIDTH - 170, int(360 + bounce_offset)))
-        WIN.blit(P2, (20, int(360 - bounce_offset)))
-        WIN.blit(T1, T1_RECT)
-        WIN.blit(T2, T2_RECT)
-
-        clock.tick(FPS)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
+            
+            if buttons[0].is_clicked(event):
+                pygame.mixer.music.stop()
+                game_loop(False)
+            elif buttons[1].is_clicked(event):
+                pygame.mixer.music.stop()
+                game_loop(True)
+            elif buttons[2].is_clicked(event):
                 pygame.quit()
                 sys.exit()
-
-            if play_button.check_click(event):
-                run = False
-                Mode_Select_WIN()
-
-            if quit_button.check_click(event):
-                run = False
-                pygame.quit()
-                sys.exit()
-
-        pygame.display.update()
 
 
 if __name__ == "__main__":
-    Menu()  # ← FIXED: Removed extra closing parenthesis
+    menu()
