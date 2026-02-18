@@ -45,8 +45,10 @@ pygame.display.set_caption("Battle of Tanks")
 clock = pygame.time.Clock()
 
 # ========== ASSETS ========== (NOW LOAD IMAGES)
-def load_image(path, scale=None):
-    img = pygame.image.load(os.path.join('Assets', 'bgs', path)).convert_alpha()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def load_image(path, scale=None): 
+    img = pygame.image.load(os.path.join('Assets', path)).convert_alpha() 
+    path = "icon.png"
     return pygame.transform.scale(img, scale) if scale else img
 
 def load_sprite(sheet, row, col, size=(16, 16), scale=None):
@@ -55,8 +57,8 @@ def load_sprite(sheet, row, col, size=(16, 16), scale=None):
     return pygame.transform.scale(surf, scale) if scale else surf.convert_alpha()
 
 # Images
-img_icon = load_image('bgs/icon.png')
-img_bg = load_image('bgs/bg.png', (WIDTH, HEIGHT))
+img_icon = load_image('icon.png')
+img_bg = load_image('bg.png', (WIDTH, HEIGHT))
 img_tank_p1 = load_image('Sprites/P1.png')
 img_tank_p2 = load_image('Sprites/P2.png')
 img_tank_bot = load_image('Sprites/BOT.png')
@@ -68,8 +70,8 @@ img_explosion_sheet = load_image('Sprites/explosion.png')
 pygame.display.set_icon(img_icon)
 
 # Fonts
-font_title = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 60)
-font_button = pygame.font.Font(os.path.join('Assets', 'font2.otf'), 24)
+font_title = pygame.font.Font(os.path.join('Assets', 'Fonts', 'title.ttf'), 60)
+font_button = pygame.font.Font(os.path.join('Assets', 'Fonts', 'font2.otf'), 24)
 
 # Bullets & Explosions
 bullets_p1 = [load_sprite(img_bullet_sheet, 0, i, (16, 16), (BULLET_SIZE, BULLET_SIZE)) for i in range(3)]
@@ -90,8 +92,8 @@ def play_music(filename, volume=0.5, loops=-1):
         pygame.mixer.music.set_volume(volume)
 sound_shoot = None
 try:
-    sound_shoot = pygame.mixer.Sound(os.path.join('Assets', 'shoot.wav'))
-    sound_shoot.set_volume(0.3)
+    sound_shoot = pygame.mixer.Sound(os.path.join('Assets', 'Audio', 'shoot.wav'))
+    sound_shoot.set_volume(0.1)
     print("✓ Shoot sound loaded!")
 except:
     print("✗ Warning: shoot.wav not found")
@@ -151,7 +153,7 @@ def draw_header(surface, title, tank1=None, tank2=None, elapsed_time=0):
         surface.blit(health_txt, (95, 30))
     
     # === CENTER: VS + Timer ===
-    vs_font = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 35)
+    vs_font = pygame.font.Font(os.path.join('Assets', 'Fonts', 'title.ttf'), 35)
     vs_txt = vs_font.render("VS", True, COLOR['ui_gold'])
     surface.blit(vs_txt, (WIDTH // 2 - 25, 5))
     
@@ -512,7 +514,7 @@ def countdown_start():
         WIN.blit(overlay, (0, 0))
         
         if number == "GO!":
-            font = pygame.font.Font(os.path.join('Assets', 'title.ttf'), 100)
+            font = pygame.font.Font(os.path.join('Assets', 'Fonts', 'title.ttf'), 100)
             color = COLOR['green']
         else:
             font = font_title
@@ -525,7 +527,7 @@ def countdown_start():
 
 def game_loop(vs_bot):
 
-    play_music('Game_audio.wav', volume=0.2)
+    play_music('Audio/Game_audio.wav', volume=0.2)
     tank1 = Tank(50, 300, img_tank_p1, 'P1', {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a, 'right': pygame.K_d})
     tank2 = Tank(690, 300, img_tank_bot if vs_bot else img_tank_p2, 'BOT' if vs_bot else 'P2',
                 None if vs_bot else {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT})
@@ -600,7 +602,7 @@ def menu():
     while running:
 
         if not pygame.mixer.music.get_busy():
-            play_music('Menu_audio.wav', volume=0.5)
+            play_music('Audio/Menu_audio.wav', volume=0.5)
         grid_offset_x = (grid_offset_x + 1) % GRID_SIZE
         grid_offset_y = (grid_offset_y + 1) % GRID_SIZE
         bounce_time += 1
