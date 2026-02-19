@@ -130,7 +130,7 @@ def draw_battlefield(surface):
         pygame.draw.line(surface, COLOR['grid'], (0, y), (WIDTH, y))
     pygame.draw.rect(surface, COLOR['ui_gold'], (WIDTH // 2 - 1, HEADER_HEIGHT, 2, HEIGHT - HEADER_HEIGHT))
 
-def draw_header(surface, title, tank1=None, tank2=None, elapsed_time=0):
+def draw_header(surface, title, tank1=None, tank2=None, elapsed_time=0.0):
     pygame.draw.rect(surface, COLOR['ui_bg'], (0, 0, WIDTH, HEADER_HEIGHT))
     pygame.draw.rect(surface, COLOR['ui_metal'], (0, 0, WIDTH, HEADER_HEIGHT - 3))
     pygame.draw.line(surface, COLOR['ui_gold'], (0, HEADER_HEIGHT - 3), (WIDTH, HEADER_HEIGHT - 3), 3)
